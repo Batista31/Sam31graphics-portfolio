@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --ink: #050507;
+  --ember: #ff8a3d;
+  --teal: #33f3df;
+  --violet: #b264ff;
+  --glass: rgba(9, 13, 18, 0.58);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 14% 12%, rgba(255, 138, 61, 0.18), transparent 30rem),
+    radial-gradient(circle at 86% 18%, rgba(51, 243, 223, 0.16), transparent 26rem),
+    linear-gradient(180deg, #040406 0%, #080a0d 48%, #030405 100%);
+  color: #f8f3ea;
+  font-family: var(--font-geist-sans), Inter, system-ui, sans-serif;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+}
+
+#game-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(51, 243, 223, 0.35);
+}
+
+.film-grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  opacity: 0.16;
+  mix-blend-mode: soft-light;
+  background-image:
+    repeating-radial-gradient(circle at 30% 40%, rgba(255,255,255,0.18) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 1px, transparent 1px 4px);
+}
+
+.glass {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(8, 12, 17, 0.68), rgba(8, 12, 17, 0.36));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255,255,255,0.1);
+  backdrop-filter: blur(18px);
+}
+
+.cinematic-copy {
+  text-wrap: balance;
+  letter-spacing: 0;
+}
+
+.media-card {
+  transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(.2,.8,.2,1), filter 420ms ease;
+}
+
+.media-card:hover {
+  transform: perspective(900px) rotateX(4deg) rotateY(-7deg) translateY(-8px);
+  filter: saturate(1.14) brightness(1.08);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@media (max-width: 860px) {
+  canvas {
+    touch-action: pan-y;
+  }
+}

@@ -1,0 +1,27 @@
+node_modules/
+.next/
+out/
+dist/
+.env
+.env.local
+.env.*
+.claude/
+.codex/
+.agents/
+.cache/
+*.log
+dev-port*
+dev-preview*
+dev-server*
+dev-verify*
+*.tsbuildinfo
+
+# Local source material — already copied into public/assets where needed
+/minecraft-world/
+
+# Legacy unreferenced asset folders (703 MB of duplicate videos etc.)
+/public/videos/
+/public/blender/
+/public/textures/
+/public/photos/
+/public/thumbnails/
