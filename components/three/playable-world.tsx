@@ -199,6 +199,11 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   // sword swing timer: -1 = idle, otherwise seconds since swing start
   const swingTimer = useRef(-1);
   const pointerStart = useRef<{ x: number; y: number; t: number } | null>(null);
+  // pre-allocated to avoid new THREE.Vector3() every frame
+  const targetCamRef = useRef(new THREE.Vector3());
+  // change-detection refs — stop calling Zustand setters every frame
+  const lastActiveRoomRef = useRef<RoomId>("home");
+  const lastInteractionLabelRef = useRef<string | null>(null);
   // ── multiplayer ──
   const mp = useRef<MultiplayerClient | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
@@ -404,20 +409,16 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
     player.current.position.set(b.x, b.y - 0.72, b.z);
     player.current.rotation.y = playerYaw.current;
 
-    const pp = new THREE.Vector3(b.x, b.y + 0.35, b.z);
-    playerPos.current.copy(pp);
+    playerPos.current.set(b.x, b.y + 0.35, b.z);
+    const pp = playerPos.current;
 
     // stream our state to the other players (throttled inside the client)
     mp.current?.sendState(b.x, b.z, playerYaw.current, moveState.current.moving, moveState.current.running);
 
     // ── Camera: always behind character ─────────────────────────────────────
     const CAM_DIST = 7.5, CAM_H = 3.8;
-    const targetCam = new THREE.Vector3(
-      pp.x - fwdX * CAM_DIST,
-      pp.y + CAM_H,
-      pp.z - fwdZ * CAM_DIST,
-    );
-    damp3(state.camera.position, targetCam, 0.1, delta);
+    targetCamRef.current.set(pp.x - fwdX * CAM_DIST, pp.y + CAM_H, pp.z - fwdZ * CAM_DIST);
+    damp3(state.camera.position, targetCamRef.current, 0.1, delta);
     state.camera.lookAt(pp.x, pp.y + 1.2, pp.z);
 
     if (state.camera instanceof THREE.PerspectiveCamera) {
@@ -425,11 +426,15 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
       state.camera.updateProjectionMatrix();
     }
 
-    // ── Active room + discovery toast ────────────────────────────────────────
+    // ── Active room + discovery toast (only on zone transition, not every frame) ─
     const roomIdx = ROOM_VECS.findIndex((v, i) => horizontalDistance(pp, v) < WORLD_ROOMS[i].activationRadius + 2);
-    if (roomIdx >= 0 && settled) {
-      setActiveRoom(WORLD_ROOMS[roomIdx].id);
-      markDiscovered(WORLD_ROOMS[roomIdx].id);
+    if (settled) {
+      const newRoomId: RoomId = roomIdx >= 0 ? WORLD_ROOMS[roomIdx].id : "home";
+      if (newRoomId !== lastActiveRoomRef.current) {
+        lastActiveRoomRef.current = newRoomId;
+        setActiveRoom(newRoomId);
+        if (roomIdx >= 0) markDiscovered(newRoomId);
+      }
     }
 
     // ── Room navigation: walk through arch → go to /room/[id] ───────────────
@@ -446,10 +451,12 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
     // ── Interactables ────────────────────────────────────────────────────────
     const items = buildInteractables(registry, pp, openModal);
     const closest = items.sort((a, b) => a.dist - b.dist)[0];
-    if (closest && closest.dist < 3.2) {
-      nearest.current = closest; setInteractionLabel(closest.label);
-    } else {
-      nearest.current = null; setInteractionLabel(null);
+    const inRange = !!closest && closest.dist < 3.2;
+    nearest.current = inRange ? closest : null;
+    const newLabel = inRange ? closest!.label : null;
+    if (newLabel !== lastInteractionLabelRef.current) {
+      lastInteractionLabelRef.current = newLabel;
+      setInteractionLabel(newLabel);
     }
   });
 
@@ -662,25 +669,29 @@ function HubCenter() {
 // ─── Room gate — arch + portal effects ────────────────────────────────────────
 
 function RoomGate({ room, playerPos }: { room: WorldRoom; playerPos: MutableRefObject<THREE.Vector3> }) {
-  const [near, setNear] = useState(false);
   const ap = useMemo(() => archPos(room), [room]);
   const apVec = useMemo(() => new THREE.Vector3(...archPos(room)), [room]);
+  const labelGroupRef = useRef<THREE.Group>(null);
+  const nearRef = useRef(false);
 
   useFrame(() => {
     const d = horizontalDistance(playerPos.current, apVec);
     const n = d < room.activationRadius + 3;
-    if (n !== near) setNear(n);
+    if (n !== nearRef.current) {
+      nearRef.current = n;
+      // Toggle visibility imperatively — no React re-render, no Text remount stutter
+      if (labelGroupRef.current) labelGroupRef.current.visible = n;
+    }
   });
 
   return (
     <group>
       {/* Arch + portal */}
       <group position={ap} rotation={[0, archRotY(room), 0]} scale={0.45}>
-        <ArchWithWalls color={room.color} label={room.neonLabel} />
+        <ArchWithWalls color={room.color} label={room.neonLabel} nearRef={nearRef} />
       </group>
-
-      {/* Hint label on floor when near arch */}
-      {near && (
+      {/* Floor label — always mounted, toggled imperatively to avoid troika rebuild stutter */}
+      <group ref={labelGroupRef} visible={false}>
         <Text
           position={[ap[0], ap[1] + 0.06, ap[2]]}
           rotation={[-Math.PI/2, 0, archRotY(room)]}
@@ -692,7 +703,7 @@ function RoomGate({ room, playerPos }: { room: WorldRoom; playerPos: MutableRefO
         >
           Enter portal
         </Text>
-      )}
+      </group>
     </group>
   );
 }
@@ -701,7 +712,7 @@ function RoomGate({ room, playerPos }: { room: WorldRoom; playerPos: MutableRefO
 
 const PORTAL_PARTICLE_COUNT = 16;
 
-function ArchWithWalls({ color, label }: { color: string; label: string }) {
+function ArchWithWalls({ color, label, nearRef }: { color: string; label: string; nearRef: MutableRefObject<boolean> }) {
   const portalMat = useRef<THREE.MeshBasicMaterial>(null);
   const particles = useRef<THREE.Group>(null);
   const torchL = useRef<THREE.PointLight>(null);
@@ -721,6 +732,9 @@ function ArchWithWalls({ color, label }: { color: string; label: string }) {
     if (portalMat.current) {
       portalMat.current.opacity = 0.58 + Math.sin(t * 3.2) * 0.12;
     }
+    // Skip expensive particle + torch updates when player is far — torch lights
+    // don't reach far anyway (distance=5), and particles aren't visible at range.
+    if (!nearRef.current) return;
     // Nether-portal swirl: particles orbit inside the portal plane
     if (particles.current) {
       particles.current.children.forEach((p, i) => {
