@@ -4,7 +4,6 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BedDouble, Camera, Clapperboard, Eye, Headphones, Heart, Image as ImageIcon, Moon, Move3D, Box, Smartphone, Sparkles, Sun, Sword, Users, X } from "lucide-react";
-import type { PortfolioRegistry } from "@/lib/media-registry";
 import { type RoomId, useWorldStore } from "@/store/world-store";
 
 const PlayableWorld = dynamic(() => import("@/components/three/playable-world").then((m) => m.PlayableWorld), {
@@ -33,12 +32,11 @@ const HOTBAR: { id: RoomId; label: string; color: string; icon: React.ReactNode 
   { id: "secret",     label: "Beyond Lens",  color: "#00d4ff", icon: <Eye size={18} /> },
 ];
 
-export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
+export function ExperienceShell() {
   const phase = useWorldStore((state) => state.phase);
   const setPhase = useWorldStore((state) => state.setPhase);
   const modal = useWorldStore((state) => state.cinematicModal);
   const closeModal = useWorldStore((state) => state.closeModal);
-  const interactionLabel = useWorldStore((state) => state.interactionLabel);
   const night = useWorldStore((state) => state.night);
   const toggleNight = useWorldStore((state) => state.toggleNight);
   const xp = useWorldStore((state) => state.xp);
@@ -67,7 +65,7 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
 
   return (
     <main id="game-root" className="relative bg-black text-white">
-      <PlayableWorld registry={registry} />
+      <PlayableWorld />
       <div className="film-grain" />
 
       <AnimatePresence>
@@ -110,9 +108,20 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
         )}
       </AnimatePresence>
 
-      <div className="pointer-events-none absolute left-5 top-5 z-30">
-        <p className="font-serif text-4xl italic leading-none">Samyak</p>
-        <p className="ml-4 text-[0.58rem] uppercase tracking-[0.55em] text-white/75">Graphics</p>
+      <div className="absolute left-5 top-5 z-30 flex items-end gap-4">
+        <div className="pointer-events-none">
+          <p className="font-serif text-4xl italic leading-none">Samyak</p>
+          <p className="ml-4 text-[0.58rem] uppercase tracking-[0.55em] text-white/75">Graphics</p>
+        </div>
+        <a
+          href="https://wa.me/917975581571?text=Hey%20Samyak,%20I%20saw%20your%20portfolio."
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-0.5 flex items-center gap-1.5 rounded-full border border-white/20 bg-black/40 px-3 py-1.5 text-[0.6rem] uppercase tracking-[0.18em] text-green-300 backdrop-blur-md transition hover:bg-green-900/50 hover:text-green-200"
+        >
+          <Smartphone size={11} />
+          Connect
+        </a>
       </div>
 
       <div className="absolute right-5 top-5 z-30 hidden items-center gap-3 md:flex">
@@ -151,19 +160,6 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
           ))}
         </AnimatePresence>
       </div>
-
-      <AnimatePresence>
-        {interactionLabel && phase === "playing" && (
-          <motion.div
-            className="pointer-events-none absolute bottom-28 left-1/2 z-40 -translate-x-1/2 rounded-full border border-white/20 bg-black/55 px-6 py-3 text-center text-sm uppercase tracking-[0.2em] text-orange-100 backdrop-blur-md"
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 18 }}
-          >
-            Space - {interactionLabel}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Minecraft hotbar + XP bar ── */}
       {phase === "playing" && (

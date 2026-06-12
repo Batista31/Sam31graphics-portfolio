@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import * as THREE from "three";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { damp3 } from "maath/easing";
-import type { PortfolioRegistry } from "@/lib/media-registry";
 import { MultiplayerClient, OUTFITS, type RosterEntry } from "@/lib/multiplayer-client";
 import { type RoomId, useWorldStore } from "@/store/world-store";
 
@@ -70,7 +69,7 @@ const ORB_POSITIONS: [number, number][] = [
 
 // ─── Canvas root ─────────────────────────────────────────────────────────────
 
-export function PlayableWorld({ registry }: { registry: PortfolioRegistry }) {
+export function PlayableWorld() {
   return (
     <Canvas
       shadows={{ type: THREE.PCFSoftShadowMap }}
@@ -81,7 +80,7 @@ export function PlayableWorld({ registry }: { registry: PortfolioRegistry }) {
       <PerspectiveCamera makeDefault fov={58} near={0.1} far={140} />
       <Suspense fallback={<Html center><p className="text-sm uppercase tracking-[0.3em] text-white">Building your world…</p></Html>}>
         <Physics gravity={[0, -18, 0]} timeStep="vary">
-          <GameScene registry={registry} />
+          <GameScene />
         </Physics>
         <Preload all />
       </Suspense>
@@ -162,7 +161,7 @@ function SkyAndLights() {
 
 // ─── Game scene ───────────────────────────────────────────────────────────────
 
-function GameScene({ registry }: { registry: PortfolioRegistry }) {
+function GameScene() {
   const player      = useRef<THREE.Group>(null);
   const playerBody  = useRef<RapierRigidBody>(null);
   const playerPos   = useRef(new THREE.Vector3(0, 0.9, PLAYER_SPAWN_Z));
@@ -176,15 +175,12 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   const router    = useRouter();
   const phase     = useWorldStore((s) => s.phase);
   const setLoaded = useWorldStore((s) => s.setLoaded);
-  const setInteractionLabel = useWorldStore((s) => s.setInteractionLabel);
-  const openModal           = useWorldStore((s) => s.openModal);
   const markDiscovered      = useWorldStore((s) => s.markDiscovered);
   const requestTeleport     = useWorldStore((s) => s.requestTeleport);
   const toggleInventory     = useWorldStore((s) => s.toggleInventory);
   const swing               = useWorldStore((s) => s.swing);
 
   const keys    = useRef<Record<string, boolean>>({});
-  const nearest = useRef<{ label: string; action: () => void } | null>(null);
   const jumpOffset = useRef(0);
   const jumpVelocity = useRef(0);
   const moveState = useRef({ moving: false, running: false, jumping: false });
@@ -200,8 +196,6 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   const pointerStart = useRef<{ x: number; y: number; t: number } | null>(null);
   // pre-allocated to avoid new THREE.Vector3() every frame
   const targetCamRef = useRef(new THREE.Vector3());
-  // change-detection ref — stop calling setInteractionLabel every frame
-  const lastInteractionLabelRef = useRef<string | null>(null);
   // ── multiplayer ──
   const mp = useRef<MultiplayerClient | null>(null);
   const [roster, setRoster] = useState<RosterEntry[]>([]);
@@ -253,9 +247,7 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
       if (e.code === "Space") {
         e.preventDefault();
         keys.current.space = true;
-        if (nearest.current) {
-          nearest.current.action();
-        } else if (jumpOffset.current <= 0.01) {
+        if (jumpOffset.current <= 0.01) {
           jumpVelocity.current = 5.8;
         }
       }
@@ -436,16 +428,6 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
       }
     }
 
-    // ── Interactables ────────────────────────────────────────────────────────
-    const items = buildInteractables(registry, pp, openModal);
-    const closest = items.sort((a, b) => a.dist - b.dist)[0];
-    const inRange = !!closest && closest.dist < 3.2;
-    nearest.current = inRange ? closest : null;
-    const newLabel = inRange ? closest!.label : null;
-    if (newLabel !== lastInteractionLabelRef.current) {
-      lastInteractionLabelRef.current = newLabel;
-      setInteractionLabel(newLabel);
-    }
   });
 
   return (
@@ -475,18 +457,7 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   );
 }
 
-// ─── Interactables ────────────────────────────────────────────────────────────
 
-function buildInteractables(reg: PortfolioRegistry, pp: THREE.Vector3, open: (s: string) => void) {
-  const out: { dist: number; label: string; action: () => void }[] = [];
-  const add = (label: string, pos: THREE.Vector3, action: () => void) =>
-    out.push({ dist: pp.distanceTo(pos), label, action });
-  add("📱 connect with Samyak", new THREE.Vector3(0, 1.2, 12),
-    () => window.open("https://wa.me/917975581571?text=Hey!", "_blank", "noopener,noreferrer"));
-  void reg; // registry interactables now live inside rooms
-  void open;
-  return out;
-}
 
 // ─── World ────────────────────────────────────────────────────────────────────
 
