@@ -45,7 +45,6 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
   const orbsCollected = useWorldStore((state) => state.orbsCollected);
   const totalOrbs = useWorldStore((state) => state.totalOrbs);
   const toasts = useWorldStore((state) => state.toasts);
-  const activeRoom = useWorldStore((state) => state.activeRoom);
   const requestTeleport = useWorldStore((state) => state.requestTeleport);
   const inventoryOpen = useWorldStore((state) => state.inventoryOpen);
   const closeInventory = useWorldStore((state) => state.closeInventory);
@@ -197,19 +196,13 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
           </div>
           {/* Hotbar slots */}
           <div className="flex gap-1 rounded-md border-2 border-[#2a2a2a] bg-[#161616]/85 p-1 backdrop-blur-sm">
-            {HOTBAR.map((slot, i) => {
-              const active = activeRoom === slot.id;
-              return (
+            {HOTBAR.map((slot, i) => (
                 <button
                   key={slot.id}
                   type="button"
                   title={`${slot.label} — press ${i + 1}`}
                   onClick={() => requestTeleport(slot.id)}
-                  className={`group relative grid h-12 w-12 place-items-center rounded border-2 transition md:h-14 md:w-14 ${
-                    active
-                      ? "border-white bg-white/15"
-                      : "border-[#3f3f3f] bg-[#262626]/80 hover:border-white/70 hover:bg-white/10"
-                  }`}
+                  className="group relative grid h-12 w-12 place-items-center rounded border-2 border-[#3f3f3f] bg-[#262626]/80 transition hover:border-white/70 hover:bg-white/10 md:h-14 md:w-14"
                   style={{ color: slot.color }}
                 >
                   {slot.icon}
@@ -218,8 +211,7 @@ export function ExperienceShell({ registry }: { registry: PortfolioRegistry }) {
                     {slot.label}
                   </span>
                 </button>
-              );
-            })}
+            ))}
           </div>
           <p className="mt-1.5 text-center text-[0.58rem] font-bold uppercase tracking-[0.2em] text-white/55 drop-shadow-[1px_1px_0_rgba(0,0,0,0.9)]">
             Press <span className="text-yellow-300">E</span> for inventory · <span className="text-yellow-300">1–5</span> teleport

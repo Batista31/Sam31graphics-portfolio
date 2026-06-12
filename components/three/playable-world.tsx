@@ -176,7 +176,6 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   const router    = useRouter();
   const phase     = useWorldStore((s) => s.phase);
   const setLoaded = useWorldStore((s) => s.setLoaded);
-  const setActiveRoom       = useWorldStore((s) => s.setActiveRoom);
   const setInteractionLabel = useWorldStore((s) => s.setInteractionLabel);
   const openModal           = useWorldStore((s) => s.openModal);
   const markDiscovered      = useWorldStore((s) => s.markDiscovered);
@@ -201,8 +200,7 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
   const pointerStart = useRef<{ x: number; y: number; t: number } | null>(null);
   // pre-allocated to avoid new THREE.Vector3() every frame
   const targetCamRef = useRef(new THREE.Vector3());
-  // change-detection refs — stop calling Zustand setters every frame
-  const lastActiveRoomRef = useRef<RoomId>("home");
+  // change-detection ref — stop calling setInteractionLabel every frame
   const lastInteractionLabelRef = useRef<string | null>(null);
   // ── multiplayer ──
   const mp = useRef<MultiplayerClient | null>(null);
@@ -426,22 +424,12 @@ function GameScene({ registry }: { registry: PortfolioRegistry }) {
       state.camera.updateProjectionMatrix();
     }
 
-    // ── Active room + discovery toast (only on zone transition, not every frame) ─
-    const roomIdx = ROOM_VECS.findIndex((v, i) => horizontalDistance(pp, v) < WORLD_ROOMS[i].activationRadius + 2);
-    if (settled) {
-      const newRoomId: RoomId = roomIdx >= 0 ? WORLD_ROOMS[roomIdx].id : "home";
-      if (newRoomId !== lastActiveRoomRef.current) {
-        lastActiveRoomRef.current = newRoomId;
-        setActiveRoom(newRoomId);
-        if (roomIdx >= 0) markDiscovered(newRoomId);
-      }
-    }
-
     // ── Room navigation: walk through arch → go to /room/[id] ───────────────
     if (!navigating.current && settled) {
       for (let i = 0; i < WORLD_ROOMS.length; i++) {
         if (horizontalDistance(pp, ROOM_VECS[i]) < 1.25) {
           navigating.current = true;
+          markDiscovered(WORLD_ROOMS[i].id);
           router.push(`/room/${WORLD_ROOMS[i].id}`);
           return;
         }
